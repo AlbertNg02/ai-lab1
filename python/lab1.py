@@ -78,6 +78,9 @@ class Node:
     def __eq__(self, other_node):
         return self.state.locId == other_node.state.locId
 
+    # def __str__(self):
+    #     return f'Road: state={self.state}, parent={self.parent}, f_cost= {} \n'
+
     def __hash__(self):
         return hash(self.state)
 
@@ -93,6 +96,7 @@ class RoadNetwork(object):
         self.reached = None
         self.locations = dict()
         self.roads = dict()
+        self.actual_cost_from_start = dict()
 
     def add_location(self, location: Location):
         """
@@ -122,61 +126,89 @@ class RoadNetwork(object):
         """
         return self.roads[locId]
 
-    def get_nodes_connected_to(self, base_node: Node):
+    def get_nodes_connected_to(self, base_node: Node, goal_node: Node):
         connected_nodes = []
         connected_roads = self.get_roads_connected_to(base_node.state.locId)
         for road in connected_roads:
             # Only defining dest_node just to have a Node instance
             dest_node = Node(self.get_location_by_id(road.endId), None, 0, 0, 0)
-            g_cost = self.get_travel_time(road, base_node,dest_node)
-            connected_nodes.append(Node(self.get_location_by_id(road.endId), base_node, road, g_cost, 0))
+            h = self.get_heuristic(dest_node, goal_node )
+            if base_node.parent is not None:
+                g = self.get_travel_time(road, base_node, dest_node) + self.actual_cost_from_start[base_node.state.locId]
+            else:
+                g = self.get_travel_time(road, base_node, dest_node)
+
+            connected_nodes.append(Node(self.get_location_by_id(road.endId), base_node, road, g, h))
+
 
         return connected_nodes
 
-
-    def get_travel_time(self,road, start_node: Node, end_node: Node):
+    def get_travel_time(self, road, start_node: Node, end_node: Node):
         lat1 = start_node.state.latitude
         long1 = start_node.state.longitude
         lat2 = end_node.state.latitude
         long2 = end_node.state.longitude
         dist = distance_on_unit_sphere(lat1, long1, lat2, long2) * 3960
         speed = road.speed
-        time_sec = dist/speed * 60 * 60
+        time_sec = dist / speed * 60 * 60
         return time_sec
 
-    def get_link_from_final_node(self, final_node):
-        linked_nodes =[]
+    def get_heuristic(self, start_node: Node, end_node: Node):
+        lat1 = start_node.state.latitude
+        long1 = start_node.state.longitude
+        lat2 = end_node.state.latitude
+        long2 = end_node.state.longitude
+        dist = distance_on_unit_sphere(lat1, long1, lat2, long2) * 3960
+        speed = 65
+        time_sec = dist / speed * 60 * 60
+        return time_sec
 
-        current_node = final_node
+
+
+    def get_link_from_final_node(self, node):
+        linked_nodes = []
+
+        current_node = node
         while current_node is not None:
             linked_nodes.insert(0, current_node.state.locId)
             current_node = current_node.parent
         return linked_nodes
 
-
-
-
     def get_a_star_path(self, start_node: Node, end_node: Node, frontier: PQueue):
-        node = Node(start_node.state, None, None, 0, 0)
+        heuristic_time = self.get_heuristic(start_node, end_node)
+        node = Node(start_node.state, None, None, 0, heuristic_time)
         self.frontier = frontier
         frontier.enqueue(node, node.f())
         self.reached = {node.state.locId: node}
 
         while not frontier.empty():
             node = frontier.dequeue()
+            if node.parent is not None:
+                self.actual_cost_from_start[node.state.locId] = node.parent.g + node.g
             if node.__eq__(end_node):
                 # print("Reached Equal")
                 chain_to_goal = self.get_link_from_final_node(node)
                 print(chain_to_goal)
                 return chain_to_goal
 
-            connected_nodes = self.get_nodes_connected_to(node)
+            if node.parent is not None:
+                print("\nVisiting [state=", node.state.locId, ", parent=", node.parent.state.locId, ", f=",
+                  node.f())
+            else:
+                print("\nVisiting [state=", node.state.locId, ", parent=null" , ", f=",
+                      node.f())
+
+            connected_nodes = self.get_nodes_connected_to(node, end_node)
             for child_node in connected_nodes:
                 child_state = child_node.state
                 if child_state.locId not in self.reached or child_node.f() < self.reached[child_state.locId].f():
                     self.reached[child_state.locId] = child_node
                     frontier.enqueue(child_node, child_node.f())
-                    # print("Adding Node:", child_node,"to frontier")
+
+                    print("    Adding [state=", child_node.state.locId, ", parent=", child_node.parent.state.locId, "g=", child_node.g, "h=",child_node.h, "f=", child_node.f())
+                else:
+                    print("    Skipping [state=", child_node.state.locId, ", parent=", child_node.parent.state.locId, "g=", child_node.g, "h=",child_node.h, "Because it has lower cost:", child_node.f())
+                    pass
 
         return None
 
@@ -220,10 +252,10 @@ def main():
                 graph.add_road(road_backwards)
 
     # start_loc = int(input('Enter start location: '))
-    start_node = Node(graph.get_location_by_id(int(2471207719)), None, 0, 0)
+    start_node = Node(graph.get_location_by_id(int(480814962)), None, 0, 0)
 
     # end_loc = int(input('Enter end location: '))
-    end_node = Node(graph.get_location_by_id(int(203785186)), None, 0, 0)
+    end_node = Node(graph.get_location_by_id(int(1352161029)), None, 0, 0)
 
     a_star_path = graph.get_a_star_path(start_node, end_node, frontier)
 
