@@ -274,10 +274,10 @@ def main():
                 graph.add_road(road_backwards)
 
     # start_loc = int(input('Enter start location: '))
-    start_node = Node(graph.get_location_by_id(int(480814962)), None, 0, 0)
+    start_node = Node(graph.get_location_by_id(int(2471207719)), None, 0, 0)
 
     # end_loc = int(input('Enter end location: '))
-    end_node = Node(graph.get_location_by_id(int(1352161029)), None, 0, 0)
+    end_node = Node(graph.get_location_by_id(int(203785186)), None, 0, 0)
 
     a_star_path = graph.get_a_star_path(start_node, end_node, frontier)
 
