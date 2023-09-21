@@ -81,6 +81,14 @@ class Node:
     # def __str__(self):
     #     return f'Road: state={self.state}, parent={self.parent}, f_cost= {} \n'
 
+    def __str__(self):
+        # action={self.action}
+        parent_loc_id = self.parent.state.locId if self.parent else None
+        loc_id = self.state.locId
+        return f"Node: state={loc_id}, parent={parent_loc_id}, , g={self.g}, h={self.h}, f={self.f()}"
+
+
+
     # def __hash__(self):
     #     return hash(self.state)
 
@@ -130,12 +138,7 @@ class RoadNetwork(object):
         connected_nodes = []
         connected_roads = self.get_roads_connected_to(base_node.state.locId)
         for road in connected_roads:
-            # Only defining dest_node just to have a Node instance
             dest_node_loc = self.get_location_by_id(road.endId)
-            # print("")
-            # print("base_node: ", base_node.state.locId)
-            # print("dest_node: ", dest_node_loc.locId)
-
             dest_node = Node(dest_node_loc, base_node.state, 0, 0, 0)
             h = self.get_heuristic(dest_node, goal_node)
 
@@ -168,23 +171,31 @@ class RoadNetwork(object):
         time_sec = dist / speed * 60 * 60
         return time_sec
 
-    def get_link_from_final_node(self, node, connected_road=None):
+    def get_link_from_final_node(self, node):
         linked_nodes = []
+        linked_road = []
 
         current_node = node
         while current_node is not None:
             linked_nodes.insert(0, current_node.state.locId)
             roads = self.get_roads_connected_to(current_node.state.locId)
-            # connected_road =""
-            # for road in roads:
-            #     if current_node.parent is not None:
-            #         if road.endId == current_node.parent.state.locId:
-            #             connected_road == road.name
-            #             print("Connected_road is", connected_road.name)
-            #
+
+            for road in roads:
+                if current_node.parent:
+                    if road.endId == current_node.parent.state.locId:
+                        linked_road.insert(0, road.name)
+
+
             current_node = current_node.parent
 
-        return linked_nodes
+        linked_road.insert(0, "Starting Location")
+
+        print("\nRoute found is:")
+        for link_count in range(len(linked_nodes)):
+            print(linked_nodes[link_count], "", linked_road[link_count])
+
+
+        return None
 
     def get_a_star_path(self, start_node: Node, end_node: Node, frontier: PQueue):
 
@@ -198,26 +209,14 @@ class RoadNetwork(object):
             self.node_visited += 1
 
             if node.__eq__(end_node):
-                # print("Reached Equal")
-                print("\nVisiting [state=", node.state.locId, ", parent=null", ", g=", node.g, ", h=", node.h, ", f=",
-                      node.f())
+                print("\nVisiting{}".format(str(node)))
                 print("Total time travel in seconds is", node.f())
-
-                chain_to_goal = self.get_link_from_final_node(node)
-                # print(chain_to_goal)
-                for chainlink in chain_to_goal:
-                    print(chainlink)
                 print("The number of nodes visited is: ", self.node_visited, " Nodes")
-                return chain_to_goal
 
-            if node.parent is not None:
-                print("\nVisiting [state=", node.state.locId, ", parent=", node.parent.state.locId, ", g=", node.g,
-                      ", h=", node.h, ", f=",
-                      node.f(), )
-            else:
-                print("\nVisiting [state=", node.state.locId, ", parent=null", ", g=", node.g, ", h=", node.h, ", f=",
-                      node.f())
+                self.get_link_from_final_node(node)
+                return None
 
+            print("\nVisitng [ {}".format(str(node)))
             connected_nodes = self.get_nodes_connected_to(node, end_node)
             for child_node in connected_nodes:
                 child_state = child_node.state
@@ -225,20 +224,13 @@ class RoadNetwork(object):
                     self.reached[child_state.locId] = child_node
                     frontier.enqueue(child_node, child_node.f())
 
-                    print("    Adding [state=", child_node.state.locId, ", parent=", child_node.parent.state.locId,
-                          "g=", child_node.g, "h=", child_node.h, "f=", child_node.f())
+                    print("    Adding [ {}".format(str(child_node)))
                 else:
-                    print("    Skipping [state=", child_node.state.locId, ", parent=", child_node.parent.state.locId,
-                          "g=", child_node.g, "h=", child_node.h, "Because it has lower cost f:", child_node.f())
+                    print("    Skipping [ {}".format(str(child_node)))
+
                     pass
 
         return None
-
-    # def expand(self, node: Node):
-    #     child_node_collection = list();
-    #     state = node.state
-    #     for each action in actions(state):
-    #         child_state =
 
 
 def main():
@@ -273,13 +265,13 @@ def main():
                 road_backwards = Road(endId, startId, speed, name)
                 graph.add_road(road_backwards)
 
-    # start_loc = int(input('Enter start location: '))
-    start_node = Node(graph.get_location_by_id(int(2471207719)), None, 0, 0)
+    start_loc = int(input('Enter start location: '))
+    start_node = Node(graph.get_location_by_id(start_loc), None, 0, 0)
 
-    # end_loc = int(input('Enter end location: '))
-    end_node = Node(graph.get_location_by_id(int(203785186)), None, 0, 0)
+    end_loc = int(input('Enter end location: '))
+    end_node = Node(graph.get_location_by_id(end_loc), None, 0, 0)
 
-    a_star_path = graph.get_a_star_path(start_node, end_node, frontier)
+    graph.get_a_star_path(start_node, end_node, frontier)
 
 
 main()

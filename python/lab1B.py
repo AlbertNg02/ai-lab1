@@ -72,7 +72,7 @@ class Node:
         self.action = action  # Connected roads with state as staring location
         self.g = g  # The path cost
         self.h = h  # The heuristic cost
-        self.speeding = speeding  # Binary but initialized as Null
+        self.speeding = speeding  # Bool but initialized as Null
 
     def f(self):
         return self.g + self.h
@@ -81,7 +81,6 @@ class Node:
         return self.state['loc'].locId == other_node.state['loc'].locId
 
     def __str__(self):
-        # action={self.action}
         parent_loc_id = self.parent.state['loc'].locId if self.parent else None
         loc_id = [self.state['loc'].locId, self.state['speed_sessions']]
         return f"Node: state={loc_id}, speeding={self.speeding}, parent={parent_loc_id}, , g={self.g}, h={self.h}, f={self.f()}"
@@ -197,21 +196,33 @@ class RoadNetwork(object):
         time_sec = dist / speed * 60 * 60
         return time_sec
 
-    def get_link_from_final_node(self, node, connected_road=None):
+    def get_link_from_final_node(self, node):
         linked_nodes = []
+        linked_road = []
+        linked_speed = []
 
         current_node = node
         while current_node is not None:
             linked_nodes.insert(0, current_node.state['loc'].locId)
             roads = self.get_roads_connected_to(current_node.state['loc'].locId)
-            # connected_road =""
-            # for road in roads:
-            #     if current_node.parent is not None:
-            #         if road.endId == current_node.parent.state.locId:
-            #             connected_road == road.name
-            #             print("Connected_road is", connected_road.name)
-            #
+
+            for road in roads:
+                if current_node.parent:
+                    if road.endId == current_node.parent.state['loc'].locId:
+                        linked_road.insert(0, road.name)
+                        linked_speed.insert(0, current_node.speeding)
+
             current_node = current_node.parent
+
+        linked_road.insert(0, "Starting Location")
+        linked_speed.insert(0, False)
+        # linked_speed.append(False)
+        linked_speed[::-1]
+
+        print("\nRoute found is:")
+        for link_count in range(len(linked_nodes)):
+            print("{} ({} , Speeding: {})".format(linked_nodes[link_count], linked_road[link_count], bool(linked_speed[link_count])))
+
 
         return linked_nodes
 
@@ -228,24 +239,15 @@ class RoadNetwork(object):
             self.node_visited += 1
 
             if node.__eq__(goal_node):
-                print(str(node))
-                # print("\nVisiting [state=", node.state['loc'].locId, ", parent=null", ", g=", node.g, ", h=", node.h, ", f=",
-                #       node.f())
-                print("Total time travel in seconds is", node.f())
-
-                chain_to_goal = self.get_link_from_final_node(node)
-                # print(chain_to_goal)
-                print("\nChain Link is:")
-                for chainlink in chain_to_goal:
-                    print(chainlink)
+                print("\nVisiting {}".format(str(node)))
+                print("\nTotal time travel in seconds is", node.f())
                 print("The number of nodes visited is: ", self.node_visited, " Nodes")
-                return chain_to_goal
 
-            if node.parent is not None:
-                print("\n Visiting {}".format(str(node)))
+                self.get_link_from_final_node(node)
 
-            else:
-                print("\n Visiting {}".format(str(node)))
+                return None
+
+            print("\n Visiting {}".format(str(node)))
 
             connected_nodes = self.get_nodes_connected_to(node, goal_node)
             for child_node in connected_nodes:
@@ -294,18 +296,20 @@ def main():
                 road_backwards = Road(endId, startId, speed, name)
                 graph.add_road(road_backwards)
 
-    # speed = int(intput('Enter number of times allowed to speed: )
-    speed_sessions = 2
-    start_state = {'loc': graph.get_location_by_id(int(203874746)), 'speed_sessions': speed_sessions}
-    end_state = {'loc': graph.get_location_by_id(int(203744893)), 'speed_sessions': speed_sessions}
+    speed_sessions = int(input('Enter number of times allowed to speed: '))
+    # speed_sessions = 2
 
-    # start_loc = int(input('Enter start location: '))
+
+    start_loc = int(input('Enter start location: '))
+    # start_state = {'loc': graph.get_location_by_id(int(203874746)), 'speed_sessions': speed_sessions}
+    start_state = {'loc': graph.get_location_by_id(start_loc), 'speed_sessions': speed_sessions}
     start_node = Node(start_state, None, 0, 0, speeding=None)
 
-    # end_loc = int(input('Enter end location: '))
+    end_loc = int(input('Enter end location: '))
+    end_state = {'loc': graph.get_location_by_id(end_loc), 'speed_sessions': 0}
     goal_node = Node(end_state, None, 0, 0, speeding=None)
 
-    a_star_path = graph.get_a_star_path(start_node, goal_node, frontier)
+    graph.get_a_star_path(start_node, goal_node, frontier)
 
 
 main()
